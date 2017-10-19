@@ -1,29 +1,40 @@
 library(pheatmap)
 library(ggplot2)
 
-#setwd("/Users/Jack/google_drive/FUS NICOL/Seth/")
+setwd("/Users/Jack/google_drive/FUS NICOL/Seth/")
 
+#Import Total RNA SEQ data and rename columns
 FUS14 <- as.matrix(read.csv("FUS_d14_rpkms.csv", stringsAsFactors=FALSE, header=TRUE))
 FUSKO <- as.matrix(read.csv("FUS_KO_rpkms.csv", stringsAsFactors=FALSE, header = TRUE))
 colnames(FUS14)[2] <- "gene_id"
 colnames(FUSKO)[2] <- "gene_id"
 
+#read in key table which shows whic sample matches which
 key <- as.matrix(read.csv("KeyTable.csv", stringsAsFactors=FALSE, header = FALSE))
 
+#Import Quant Seq data
 Jack1 <- as.matrix(read.table("jack1.expression_genes.tab", sep="\t",header=TRUE))
 Jack2 <- as.matrix(read.table("jack2.expression_genes.tab", sep="\t",header=TRUE))
 Jack3 <- as.matrix(read.table("jack3.expression_genes.tab", sep="\t",header=TRUE))
 Jack4 <- as.matrix(read.table("jack4.expression_genes.tab", sep="\t",header=TRUE))
 
+#create function which gets RPKM values
 RPKM <- function(Matr){
+  #take only useful columns from matrix
   J1 <- Matr[,c(2:4,9:17)]
+  #Take just the actual useful information
   J1[,2] <- sapply(strsplit(J1[,2], ":"), "[", 2)
+  #Split the string again and take the gene start
   J1GeneStart <-as.numeric(sapply(strsplit(J1[,2], "-"), "[", 1))
+  #take the gene end point
   J1GeneEND <-as.numeric(sapply(strsplit(J1[,2], "-"), "[", 2))
+  #Add gene start and end to matrix
   J1 <- cbind(J1, GeneStart = J1GeneStart)
   J1 <- cbind(J1, GeneEND = J1GeneEND)
+  #calculate gene length
   J1len <- as.numeric(J1[,14])-as.numeric(J1[,13])
   J1 <- cbind(J1, GeneLength = J1len)
+  #Work out FPKM score for each sample in each gene and bind it
   J1s <- as.numeric(J1[,5]) /((as.numeric(J1[,15])/1000)*(sum(as.numeric(J1[,5]))/1000000))
   J1 <- cbind(J1, C1 = J1s)
   J1s <- as.numeric(J1[,6]) /((as.numeric(J1[,15])/1000)*(sum(as.numeric(J1[,5]))/1000000))
@@ -41,6 +52,7 @@ RPKM <- function(Matr){
   J1s <- as.numeric(J1[,12]) /((as.numeric(J1[,15])/1000)*(sum(as.numeric(J1[,5]))/1000000))
   J1 <- cbind(J1, T4 = J1s)
   J1 <- J1[,-c(1:2, 4:14)]
+  #Rename Columns
   namelist <- list()
   namelist[1] <- colnames(Matr)[4]
   namelist[2] <- "GeneLength"
@@ -49,11 +61,13 @@ RPKM <- function(Matr){
   return(J1)
 }
 
+#get RPKM scores for each Quant Seq Sample
 JackFin1 <- RPKM(Jack1)
 JackFin2 <- RPKM(Jack2)[,-2]
 JackFin3 <- RPKM(Jack3)[,-2]
 JackFin4 <- RPKM(Jack4)[,-2]
 
+#merge the quant seq samples into a single dataframe and remove duplicate columns
 comb <- merge(JackFin1, JackFin2, by="gene_id", all=TRUE)
 comb <- merge(comb, JackFin3, by="gene_id", all=TRUE)
 comb <- merge(comb, JackFin4, by="gene_id", all=TRUE)
@@ -63,30 +77,19 @@ genenames <- comb[,1]
 row.names(comb) <- genenames
 comb <- comb[,-1]
 comb <- as.data.frame(comb)
-
 drop <- c("c1.d14_WT1.y", "c2.d14_WT2.y", "c3.d14_WT3.y", "c4.d14_WT4.y", "c1.KO_WT1.y",  "c2.KO_WT2.y",  "c3.KO_WT3.y",  "c4.KO_WT4.y")
 comb1 <- comb[,!(names(comb) %in% drop)]
 
-timeslist <- list()
-CPKMMat <- matrix(, nrow = length(as.numeric(comb1[,2])), ncol = 48)
-length(comb1[,2])
-
-for(y in 1:49){
-  for(x in 1:length(as.numeric(comb1[,2]))){
-    CPKMMat[x,y-1] <- as.numeric(comb1[x,y])*as.numeric(comb1[y,1])
-  }
-}
-
+#Create empty matrix then populate it with numeric versions of the CPKM
 comb3 <- matrix(, nrow = length(as.numeric(comb1[,2])), ncol = 48)
-
 for(y in 1:49){
   comb3[,(y-1)] <- as.numeric(comb1[,y])*as.numeric(comb1[,1])
 }
 rownames(comb3) <- rownames(comb1)
 colnames(comb3) <- colnames(comb1)[-1]
-
 comb3 <- as.data.frame(comb3)
 
+#plot the log of the CPKM scores in the Total RNA Seq against Total RNA Seq
 pdf("Log Graphs CPKM.pdf")
 plot(log10(comb3[,(names(comb3) %in% key[1,])]), ylab="QuantSeq", xlab="TotalRNASeq", main="Log KO WT 1")
 plot(log10(comb3[,(names(comb3) %in% key[2,])]), ylab="QuantSeq", xlab="TotalRNASeq", main="Log KO WT 2")
@@ -114,6 +117,7 @@ plot(log10(comb3[,(names(comb3) %in% key[23,])]), ylab="QuantSeq", xlab="TotalRN
 plot(log10(comb3[,(names(comb3) %in% key[24,])]), ylab="QuantSeq", xlab="TotalRNASeq", main="Log d14 HOM 4")
 dev.off()
 
+#plot the non-log versions
 pdf("Graphs CPKM.pdf")
 plot(comb3[,(names(comb3) %in% key[1,])], ylab="QuantSeq", xlab="TotalRNASeq", main="KO WT 1")
 plot(comb3[,(names(comb3) %in% key[2,])], ylab="QuantSeq", xlab="TotalRNASeq", main="KO WT 2")
@@ -141,6 +145,7 @@ plot(comb3[,(names(comb3) %in% key[23,])], ylab="QuantSeq", xlab="TotalRNASeq", 
 plot(comb3[,(names(comb3) %in% key[24,])], ylab="QuantSeq", xlab="TotalRNASeq", main="d14 HOM 4")
 dev.off()
 
+#crete function to calculate correlation between the two types of analysis
 correlation <- function(loc, mat, key){
   correlation<-cor.test(mat[,(names(mat) %in% key[loc,1])], mat[,(names(mat) %in% key[loc,2])])
   return(correlation)
@@ -171,7 +176,7 @@ core22<-correlation(22,comb3,key)
 core23<-correlation(23,comb3,key)
 core24<-correlation(24,comb3,key)
 
-
+#attempt to create ggplot versions of plot
 ggplot(comb3, aes_string(x=key[1,1], y=key[1,2])) + geom_point(alpha=.2) + geom_smooth(method=lm) + geom_abline(slope=1, intercept = 0) +theme_bw() + labs(title="KO WT 1", x="TotalRNASeq", y="QuantSeq")
 ggplot(comb3, aes_string(x=key[2,1], y=key[2,2])) + geom_point() + geom_smooth(method=lm)
 ggplot(comb3, aes_string(x=key[3,1], y=key[3,2])) + geom_point()
@@ -197,32 +202,30 @@ ggplot(comb3, aes_string(x=key[22,1], y=key[22,2])) + geom_point()
 ggplot(comb3, aes_string(x=key[23,1], y=key[23,2])) + geom_point()
 ggplot(comb3, aes_string(x=key[24,1], y=key[24,2])) + geom_point()
 
+#create heatmaps of the combination as as well as just in d14 and KO
 pheatmap(comb3[complete.cases(comb3),], scale = "row", show_rownames = F)
 pheatmap(comb3[complete.cases(comb3),(names(comb3) %in% key[1:12,])], scale="row", show_rownames = F)
 pheatmap(comb3[complete.cases(comb3),(names(comb3) %in% key[13:24,])], scale="row", show_rownames = F)
 
+#Create sample which only had complete rows
 comb4 <- comb3[complete.cases(comb3),]
 
-
+#Created heatmap just looking at total RNA Seq
 totalRNA <- comb4[ , 25:48]
 totalRNA_sd <- apply( totalRNA, MAR =1, FUN = sd)
 totalRNA <- totalRNA[ totalRNA_sd > 0, ]
 totalRNA <- totalRNA[ complete.cases( totalRNA),]
 pheatmap( totalRNA, scale = "row", show_rownames = FALSE, main="Total RNA Seq")
 
+#create heatmap just looking at Quant Seq
 QuantSeq <- comb4[ , 1:12]
 QuantSeq_sd <- apply( QuantSeq, MAR =1, FUN = sd)
 QuantSeq <- QuantSeq[ QuantSeq_sd > 0, ]
 QuantSeq <- QuantSeq[ complete.cases( QuantSeq),]
 pheatmap( QuantSeq, scale = "row", show_rownames = FALSE, main="Quant Seq")
 
+#created heatmap with everything
 pheatmap(comb4[,], scale = "row", show_rownames = F, main = "All Samples")
 # quantseq heatmap
 pheatmap(comb4[,(names(comb4) %in% key[,1])], scale="row", show_rownames = F)
-
 pheatmap(comb4[,(names(comb4) %in% key[,2])], scale="row", show_rownames = F)
-
-complete.cases(comb3)
-
-pheatmap(cor(comb4))
-     
