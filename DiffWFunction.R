@@ -47,8 +47,8 @@ RunDEseq <- function (QuantSeq){
 }
 
 #importand format d14 data
-d14TotalSEQ <- as.data.frame(read.table("deseq_Nicol_d14_differential_expression.tab", sep="\t",header=TRUE))
-d14QuantRaw <- as.data.frame(read.table("jack4.expression_genes.tab", sep="\t",header=TRUE, stringsAsFactors = FALSE ))
+d14TotalSEQ <- as.data.frame(read.table("Input/deseq_Nicol_d14_differential_expression.tab", sep="\t",header=TRUE))
+d14QuantRaw <- as.data.frame(read.table("Input/jack4.expression_genes.tab", sep="\t",header=TRUE, stringsAsFactors = FALSE ))
 d14QuantSeq <- data.frame(d14QuantRaw[,4], d14QuantRaw[,10:17])
 rownames(d14QuantSeq) <- d14QuantSeq[,1]
 d14QuantSeq <- d14QuantSeq[,-1]
@@ -58,8 +58,8 @@ d14QuantSEQ <- RunDEseq(d14QuantSeq)
 d14Zscore <- produceZscoreTable(d14QuantSEQ, d14TotalSEQ)
 
 #importand format d14 data
-WTQuantRaw <- as.data.frame(read.table("jack2.expression_genes.tab", sep="\t",header=TRUE, stringsAsFactors = FALSE ))
-WTTotalSEQ <- as.data.frame(read.table("deseq_Nicol_KO_differential_expression.tab", sep="\t",header=TRUE))
+WTQuantRaw <- as.data.frame(read.table("Input/jack2.expression_genes.tab", sep="\t",header=TRUE, stringsAsFactors = FALSE ))
+WTTotalSEQ <- as.data.frame(read.table("Input/deseq_Nicol_KO_differential_expression.tab", sep="\t",header=TRUE))
 WTQuantSeq <- data.frame(WTQuantRaw[,4], WTQuantRaw[,10:17])
 rownames(WTQuantSeq) <- WTQuantSeq[,1]
 WTQuantSeq <- WTQuantSeq[,-1]

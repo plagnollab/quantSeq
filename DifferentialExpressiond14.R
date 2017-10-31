@@ -47,8 +47,8 @@ RunDEseq <- function (QuantSeq){
 #######################################################################################################################
 
 #read in table 
-QuantSEQ <- as.data.frame(read.table("jack4.genes_de.tab", sep="\t",header=TRUE))
-TotalSEQ <- as.data.frame(read.table("deseq_Nicol_d14_differential_expression.tab", sep="\t",header=TRUE))
+QuantSEQ <- as.data.frame(read.table("Input/jack4.genes_de.tab", sep="\t",header=TRUE))
+TotalSEQ <- as.data.frame(read.table("Input/deseq_Nicol_d14_differential_expression.tab", sep="\t",header=TRUE))
 
 Zscores <- produceZscoreTable(QuantSEQ, TotalSEQ)
 
@@ -66,7 +66,7 @@ cor.test(Zscores[,1], Zscores[,2])
 #######################################################################################################################
 
 #import raw reads from QuantSeq and format resulding dataframe
-QuantRaw <- as.data.frame(read.table("jack4.expression_genes.tab", sep="\t",header=TRUE, stringsAsFactors = FALSE ))
+QuantRaw <- as.data.frame(read.table("Input/jack4.expression_genes.tab", sep="\t",header=TRUE, stringsAsFactors = FALSE ))
 QuantSeq <- data.frame(QuantRaw[,4], QuantRaw[,10:17])
 rownames(QuantSeq) <- QuantSeq$QuantRaw...4.
 QuantSeq <- QuantSeq[,-1]

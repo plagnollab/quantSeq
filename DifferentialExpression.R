@@ -18,8 +18,8 @@ library(DESeq2)
 #######################################################################################################################
 
 #read in table 
-QuantSEQ <- as.data.frame(read.table("jack2.genes_de.tab", sep="\t",header=TRUE))
-TotalSEQ <- as.data.frame(read.table("deseq_Nicol_KO_differential_expression.tab", sep="\t",header=TRUE))
+QuantSEQ <- as.data.frame(read.table("Input/jack2.genes_de.tab", sep="\t",header=TRUE))
+TotalSEQ <- as.data.frame(read.table("Input/deseq_Nicol_KO_differential_expression.tab", sep="\t",header=TRUE))
 
 #Function to make zscore from Jack
 make_signedZscore <- function( log2FC, pvalue){
@@ -58,7 +58,7 @@ cor.test(Zscores[,1], Zscores[,2])
 #######################################################################################################################
 
 #import raw reads from QuantSeq and format resulding dataframe
-QuantRaw <- as.data.frame(read.table("jack2.expression_genes.tab", sep="\t",header=TRUE, stringsAsFactors = FALSE ))
+QuantRaw <- as.data.frame(read.table("Input/jack2.expression_genes.tab", sep="\t",header=TRUE, stringsAsFactors = FALSE ))
 QuantSeq <- data.frame(QuantRaw[,4], QuantRaw[,10:17])
 rownames(QuantSeq) <- QuantSeq$QuantRaw...4.
 QuantSeq <- QuantSeq[,-1]
@@ -88,8 +88,7 @@ Zscores <- merge(TotalZ, QuantZ, by="GeneID")
 row.names(Zscores) <- Zscores$GeneID
 Zscores <- Zscores[,-1]
 
-#plot z scores
-
+#plot z scores using only complete rows
 plot (Zscores[complete.cases(Zscores),], xlab = "TotalRNASeq", ylab="QuantSeq")
 abline(h = c(2,-2))
 abline(v = c(2,-2))

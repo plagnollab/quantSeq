@@ -1,22 +1,22 @@
 library(pheatmap)
 library(ggplot2)
 
-setwd("/Users/Jack/google_drive/FUS NICOL/Seth/")
+#setwd("/Users/Jack/google_drive/FUS NICOL/Seth/")
 
 #Import Total RNA SEQ data and rename columns
-FUS14 <- as.matrix(read.csv("FUS_d14_rpkms.csv", stringsAsFactors=FALSE, header=TRUE))
-FUSKO <- as.matrix(read.csv("FUS_KO_rpkms.csv", stringsAsFactors=FALSE, header = TRUE))
+FUS14 <- as.matrix(read.csv("Input/FUS_d14_rpkms.csv", stringsAsFactors=FALSE, header=TRUE))
+FUSKO <- as.matrix(read.csv("Input/FUS_KO_rpkms.csv", stringsAsFactors=FALSE, header = TRUE))
 colnames(FUS14)[2] <- "gene_id"
 colnames(FUSKO)[2] <- "gene_id"
 
 #read in key table which shows whic sample matches which
-key <- as.matrix(read.csv("KeyTable.csv", stringsAsFactors=FALSE, header = FALSE))
+key <- as.matrix(read.csv("Input/KeyTable.csv", stringsAsFactors=FALSE, header = FALSE))
 
 #Import Quant Seq data
-Jack1 <- as.matrix(read.table("jack1.expression_genes.tab", sep="\t",header=TRUE))
-Jack2 <- as.matrix(read.table("jack2.expression_genes.tab", sep="\t",header=TRUE))
-Jack3 <- as.matrix(read.table("jack3.expression_genes.tab", sep="\t",header=TRUE))
-Jack4 <- as.matrix(read.table("jack4.expression_genes.tab", sep="\t",header=TRUE))
+Jack1 <- as.matrix(read.table("Input/jack1.expression_genes.tab", sep="\t",header=TRUE))
+Jack2 <- as.matrix(read.table("Input/jack2.expression_genes.tab", sep="\t",header=TRUE))
+Jack3 <- as.matrix(read.table("Input/jack3.expression_genes.tab", sep="\t",header=TRUE))
+Jack4 <- as.matrix(read.table("Input/jack4.expression_genes.tab", sep="\t",header=TRUE))
 
 #create function which gets RPKM values
 RPKM <- function(Matr){
