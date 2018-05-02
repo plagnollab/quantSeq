@@ -1,0 +1,186 @@
+library(DRIMSeq) 
+library(stageR)
+library(dplyr)
+library(tidyr)
+library(plyr)
+
+#make feature ID unique and reformat the data
+featid <- function(df){
+  df$feature_id <- paste(df$gene_name, df$site_pos, sep = "_")
+  dat <- data.frame(gene_id = df$gene_id, feature_id = df$feature_id)
+  dat[,3:22] <- df[,c(10:19, 21:30)]
+  return(dat)
+}
+
+DRIMrun <- function(gr, df){
+  d <- dmDSdata(counts = df, samples = gr) 
+  d <- dmFilter(d, min_samps_gene_expr = 5, min_samps_feature_expr = 5,
+                min_gene_expr = 10, min_feature_expr = 4)
+  set.seed(1337)
+  design_full <- model.matrix(~ group, data = d@samples)
+  d <- dmPrecision(d, design = design_full)
+  d <- dmFit(d, design = design_full, verbose = 1) 
+  d <- dmTest(d, coef =  colnames(design_full)[2]) 
+}
+
+propfunc <- function(df, geneid){
+  dat <- filter(df, gene_id == geneid)
+  if (dat$strand[1] == '+'){
+    featid <- sort(dat$feature_id, decreasing = FALSE)
+    sitepos <- sort(dat$site_pos, decreasing = FALSE)
+  } else {
+    featid <- sort(dat$feature_id, decreasing = TRUE)
+    sitepos <- sort(dat$site_pos, decreasing = TRUE)
+  }
+  PropGrph <- plotProportions(d, gene_id = geneid, group_variable = "group")
+  return(PropGrph)
+}
+
+StageRun <- function(d){
+  pScreen <- results(d)$pvalue
+  names(pScreen) <- results(d)$gene_id
+  pConfirmation <- matrix(results(d, level = "feature")$pvalue, ncol = 1)
+  rownames(pConfirmation) <- results(d, level = "feature")$feature_id
+  tx2gene <- results(d, level = "feature")[, c("feature_id", "gene_id")]
+  stageRObj <- stageRTx(pScreen = pScreen, pConfirmation = pConfirmation,
+                        pScreenAdjusted = FALSE, tx2gene = tx2gene)
+  stageRObj <- stageWiseAdjustment(object = stageRObj, method = "dtu",
+                                   alpha = 1)
+  padj <- getAdjustedPValues(stageRObj, order = TRUE,
+                             onlySignificantGenes = FALSE)
+  coeff <- coefficients(d, level="feature")
+  coe <- data.frame(txID = coeff$feature_id, change = coeff$groupMN)
+  full2 <- full 
+  full2 <- rename(full2, "txID" = "feature_id")
+  TranscriptWPval <- merge(full2, padj, by="txID")
+  TranscriptWAll <- merge(TranscriptWPval, coe, by = "txID")
+  Temp <- select(TranscriptWAll, gene_id, gene_name, txID, chr, strand, site_pos:change) 
+  return(Temp)
+}
+
+GetSites <- function(agR){
+  AgaResults <- select(agR, gene_id, gene_name, txID, gene, transcript, change)
+  AgaResults$sign <- sign(AgaResults$change)
+  AgaResults$change <- AgaResults$change
+  genes <- unique(agR$gene_name, incomparables = FALSE)
+  Temp2 <- data.frame(txID=NA, PtD=NA)
+  MostDistal <- data.frame(txID=NA, PtD=NA)
+  for(gene in genes){
+    tmp <- agR[agR$gene_name==gene,]
+    if(nrow(tmp)==1) next
+    if(tmp$strand == "-"){
+      tmp <- arrange(tmp, desc(site_pos))
+    }
+    else{
+      tmp <- arrange(tmp, site_pos)
+    }
+    tmp$PtD <- 1:nrow(tmp)
+    tmp <- select(tmp, txID, PtD)
+    Temp2 <- rbind(Temp2, tmp)
+    MostDistal <- rbind(MostDistal, tmp[nrow(tmp),])
+  }
+  Temp2 <- Temp2[-1,]
+  MostDistal <- MostDistal[-1,]
+  ResultsFull <- full_join(AgaResults, Temp2)
+  MostDistalFull <- right_join(AgaResults, MostDistal)
+  ProximalFull <- filter(ResultsFull, PtD == 1)
+  DistalFull <- filter(ResultsFull, PtD != 1)
+  return(list(ResultsFull, MostDistalFull, ProximalFull, DistalFull))
+}
+
+anno <- as.data.frame(read.table("~/Google Drive/Seth/drimseq/biomart_annotations_mouse.tab" , sep = "\t", stringsAsFactors=FALSE, header = TRUE) )
+SpinChord <- as.data.frame(read.table("aga9.expression_sites.tab", sep = "\t", stringsAsFactors=FALSE, header = TRUE) )
+MotorNeur <- as.data.frame(read.table("aga11.expression_sites.tab", sep = "\t", stringsAsFactors=FALSE, header = TRUE) )
+
+full <- inner_join(SpinChord, MotorNeur, by=c("chr", "strand", "gene_locus", "gene_id", "gene_name", "gene_biotype", "site_pos", "gene_interval"))
+fully <- full_join(SpinChord, MotorNeur, by=c("chr", "strand", "gene_locus", "gene_id", "gene_name", "gene_biotype", "site_pos", "gene_interval"))
+
+full$feature_id <- paste(full$gene_name, full$site_pos, sep = "_")
+fully$feature_id <- paste(fully$gene_name, fully$site_pos, sep = "_")
+
+Fullid <- featid(full)
+Fullyid <- featid(fully)
+
+WT <- select(Fullid, gene_id:c5.F_cre.HA._FUS.WT_cord_input_5, c1.F_cre.HA._FUS.WT_cord_IP_1:c5.F_cre.HA._FUS.WT_cord_IP_5)
+D14 <-  select(Fullid, gene_id, feature_id, t1.F_cre.HA._FUS.D14.het_cord_input_1:t5.F_cre.HA._FUS.D14.het_cord_input_5, t1.F_cre.HA._FUS.D14.het_cord_IP_1:t5.F_cre.HA._FUS.D14.het_cord_IP_5)
+SC <- select(Fullyid, gene_id:t5.F_cre.HA._FUS.D14.het_cord_input_5)
+MN <-  select(Fullyid, gene_id, feature_id, c1.F_cre.HA._FUS.WT_cord_IP_1:t5.F_cre.HA._FUS.D14.het_cord_IP_5)
+
+D14group = list() 
+D14group[1:5] <- "SC"
+D14group[6:10] <- "MN"
+D14grouping <- data.frame(sample_id = colnames(D14)[3:12], group = unlist(D14group))
+D14grouping$group <- relevel(D14grouping$group, "SC")
+
+WTgroup = list() 
+WTgroup[1:5] <- "SC"
+WTgroup[6:10] <- "MN"
+WTgrouping <- data.frame(sample_id = names(WT)[3:12], group = unlist(WTgroup))
+WTgrouping$group <- relevel(WTgrouping$group, "SC")
+
+SCgroup = list() 
+SCgroup[1:5] <- "WT"
+SCgroup[6:10] <- "d14"
+SCgrouping <- data.frame(sample_id = names(SC)[3:12], group = unlist(SCgroup))
+SCgrouping$group <- relevel(SCgrouping$group, "WT")
+
+MNgroup = list() 
+MNgroup[1:5] <- "WT"
+MNgroup[6:10] <- "d14"
+MNgrouping <- data.frame(sample_id = names(MN)[3:12], group = unlist(MNgroup))
+MNgrouping$group <- relevel(MNgrouping$group, "WT")
+
+WTDRIM <- DRIMrun(WTgrouping, WT)
+D14DRIM <- DRIMrun(D14grouping, D14)
+SCDRIM <- DRIMrun(SCgrouping, SC)
+MNDRIM <- DRIMrun(MNgrouping, MN)
+
+
+geneid <- "ENSMUSG00000031393"
+dat <- filter(fully, gene_id == geneid)
+if (dat$strand[1] == '+'){
+  featid <- sort(dat$feature_id, decreasing = FALSE)
+  sitepos <- sort(dat$site_pos, decreasing = FALSE)
+} else {
+  featid <- sort(dat$feature_id, decreasing = TRUE)
+  sitepos <- sort(dat$site_pos, decreasing = TRUE)
+}
+Mecp2SCprop <- plotProportions(SCDRIM, gene_id = geneid, group_variable = "group")
+Mecp2SCprop + scale_x_discrete(limits = featid) + xlab(sitepos)
+
+geneid <- "ENSMUSG00000031393"
+dat <- filter(fully, gene_id == geneid)
+if (dat$strand[1] == '+'){
+  featid <- sort(dat$feature_id, decreasing = FALSE)
+  sitepos <- sort(dat$site_pos, decreasing = FALSE)
+} else {
+  featid <- sort(dat$feature_id, decreasing = TRUE)
+  sitepos <- sort(dat$site_pos, decreasing = TRUE)
+}
+Mecp2MNprop <- plotProportions(MNDRIM, gene_id = geneid, group_variable = "group")
+prop + scale_x_discrete(limits = featid) + xlab(sitepos)
+
+dat1[is.na(dat1)] <- 0
+dickbutt <- apply(dat1, 2, prop.table)
+
+dat1 %>%
+  split() %>%
+  map()
+
+prop.table(dat)
+
+ResWT <- StageRun(WTDRIM)
+ResD14 <- StageRun(D14DRIM)
+
+AGWT <- GetSites(ResWT)
+AGD14 <- GetSites(ResD14)
+
+write.csv(AGWT[1][[1]][,c(1:3, 8, 4:5,7,6)], "WTSCvMNProx.csv")
+write.csv(AGWT[2][[1]][,c(1:5,7,6)], "WTSCvMNPMostDistal.csv")
+write.csv(AGWT[3][[1]][,c(1:5,7,6)], "WTSCvMNProximal.csv")
+write.csv(AGWT[4][[1]][,c(1:3, 8, 4:5,7,6)], "WTSCvMNDistal.csv")
+
+write.csv(AGD14[1][[1]][,c(1:3, 8, 4:5,7,6)], "D14SCvMNProx.csv")
+write.csv(AGD14[2][[1]][,c(1:5,7,6)], "D14SCvMNPMostDistal.csv")
+write.csv(AGD14[3][[1]][,c(1:5,7,6)], "D14SCvMNProximal.csv")
+write.csv(AGD14[4][[1]][,c(1:3, 8, 4:5,7,6)], "D14SCvMNDistal.csv")
