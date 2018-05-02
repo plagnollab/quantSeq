@@ -13,21 +13,31 @@ featid <- function(df){
 }
 
 DRIMrun <- function(gr, df){
+  #create a dataset which DRIMSeq can work with
   d <- dmDSdata(counts = df, samples = gr) 
+  #Removes the genes with low feature or gene expression
   d <- dmFilter(d, min_samps_gene_expr = 5, min_samps_feature_expr = 5,
                 min_gene_expr = 10, min_feature_expr = 4)
+  #set seed to ensure that results can be repeated
   set.seed(1337)
+  #Define the formula 
   design_full <- model.matrix(~ group, data = d@samples)
+  #Common precision, gene precision, and mean expression is calculated
   d <- dmPrecision(d, design = design_full)
+  #estemates fullmodel regression co-effecients
   d <- dmFit(d, design = design_full, verbose = 1) 
+  #tests against the null hypothesis, setting the 
   d <- dmTest(d, coef =  colnames(design_full)[2]) 
 }
 
+#Produce a proportoin graph either ascending or descending 
 propfunc <- function(df, geneid){
   dat <- filter(df, gene_id == geneid)
+  #Check if samples are positive strand, if they are, create a list of site positions and order ascending
   if (dat$strand[1] == '+'){
     featid <- sort(dat$feature_id, decreasing = FALSE)
     sitepos <- sort(dat$site_pos, decreasing = FALSE)
+  #If not order descending
   } else {
     featid <- sort(dat$feature_id, decreasing = TRUE)
     sitepos <- sort(dat$site_pos, decreasing = TRUE)
