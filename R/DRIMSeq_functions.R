@@ -33,11 +33,21 @@ DRIMrun <- function(gr, df){
 
 
 # for a single gene, plot the proportions of polyA sites
-plotPolyA <- function(geneid, data, DRIMSeq_res){
-  
+plotPolyA <- function(gene, data, DRIMSeq_res){
+  # allow for Ensembl or regular gene names
+  if( grepl("^ENS", gene)){
+    ensemblID <- gene
+    gene_name <- unique(filter(data, gene_id == ensemblID)$gene_name)
+  }else{
+    gene_name <- gene
+    ensemblID <- unique(filter(data, gene_name == gene)$gene_id)
+  }
   # get feature IDs for x axis
-  gene_data <- dplyr::filter(data, gene_id == geneid)
-  
+  gene_data <- dplyr::filter(data, data$gene_id == ensemblID)
+  # extract per gene p value to add to plot title
+  gene_res <- DRIMSeq::results(DRIMSeq_res, level = "gene") 
+  gene_pvalue <- dplyr::filter(gene_res, gene_id == ensemblID)$pvalue
+
   if (gene_data$strand[1] == '+'){
     featid <- sort(gene_data$feature_id, decreasing = FALSE)
     sitepos <- sort(gene_data$site_pos, decreasing = FALSE)
@@ -46,21 +56,16 @@ plotPolyA <- function(geneid, data, DRIMSeq_res){
     sitepos <- sort(gene_data$site_pos, decreasing = TRUE)
   }
   
-  # extract per gene p value to add to plot title
-  gene_res <- DRIMSeq::results(DRIMSeq_res, level = "gene") 
-  gene_pvalue <- dplyr::filter(gene_res, gene_id == geneid)$pvalue
-  
   gene_pvalue <- signif(gene_pvalue, digits = 3)
   
   # make plot
-  p <- DRIMSeq::plotProportions(DRIMSeq_res, gene_id = geneid, group_variable = "group")
+  p <- DRIMSeq::plotProportions(DRIMSeq_res, gene_id = ensemblID, group_variable = "group")
   
   # add labels and title
-  p <- p + scale_x_discrete(limits = featid) + xlab("") + labs(title = unique(gene_data$gene_name), subtitle = paste0("Gene P = ", gene_pvalue) )
+  p <- p + scale_x_discrete(limits = featid) + xlab("") + labs(title = gene_name, subtitle = paste0("Gene P = ", gene_pvalue) )
   
   return(p)
 }
-
 
 # 
 StageRun <- function(d, case_condition, alpha = 0.05){

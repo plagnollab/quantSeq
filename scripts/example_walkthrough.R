@@ -23,7 +23,9 @@ data$feature_id <- paste(data$gene_name, data$site_pos, sep = "_")
 
 sample_counts <- select( data, gene_id, feature_id, contains("FUS.WT"), contains("FUS.D14"))
 
-drimseq_res <- DRIMrun(gr = support, df = sample_counts[1:500,] )
+# run drimseq
+drimseq_res <- DRIMrun(gr = support, df = sample_counts )
+
 
 res <- DRIMSeq::results(drimseq_res, level = "feature") %>% 
   arrange(pvalue)
@@ -34,7 +36,9 @@ table(res$adj_pvalue < 0.05)
 top_gene <- head(res,1)$gene_id
 
 # plot it
+pdf("../example/example_plot.pdf")
 plotPolyA(geneid = top_gene, data = data, DRIMSeq_res = drimseq_res)
+dev.off()
 
 # run StageR
 staged_res <- StageRun(drimseq_res,case_condition = "FUS_d14")
